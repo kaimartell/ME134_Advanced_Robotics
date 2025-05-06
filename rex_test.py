@@ -4,9 +4,11 @@ from PID_controller import PIDController
 from MQTT.mqtt import MQTTClient
 from XRPLib.differential_drive import DifferentialDrive
 drivetrain = DifferentialDrive.get_default_differential_drive()
+from XRPLib.defaults import *
 
 
 reflectance = reflectance.get_default_reflectance()
+imu = IMU.get_default_imu()
 
 
 class Robot:
