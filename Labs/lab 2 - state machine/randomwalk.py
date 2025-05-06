@@ -1,4 +1,4 @@
-# randomwalk.py
+#randomwalk.py
 
 import random
 import time

@@ -14,7 +14,7 @@ LEFT_MOTOR_B = 7
 WHEEL_DIAMETER = 6  # cm
 WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER * 3.14159  # cm
 SAMPLING_INTERVAL = 0.01  # seconds
-TARGET_SPEED = 10  # cm/s
+TARGET_SPEED = 30  # cm/s
 
 print("Initializing encoders...")
 right_motor_encoder = Encoder(1, 12, 13)

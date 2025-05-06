@@ -74,11 +74,9 @@ def main():
                 right_counts = right_motor_encoder.get_position_counts()
                 left_counts = left_motor_encoder.get_position_counts()
 
-                # Convert counts to distance (cm)
                 current_right_distance = counts_to_distance(right_counts, right_motor_encoder)
                 current_left_distance = counts_to_distance(left_counts, left_motor_encoder)
 
-                # Compute raw velocities in cm/s
                 raw_right_velocity = calculate_velocity(previous_right_distance, current_right_distance, delta_time)
                 raw_left_velocity = calculate_velocity(previous_left_distance, current_left_distance, delta_time)
                 
