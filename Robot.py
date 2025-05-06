@@ -12,7 +12,7 @@ imu = IMU.get_default_imu()
 
 
 class Robot:
-    def __init__(self, husky, car_id, target_tag_area=2000):
+    def __init__(self, husky, target_tag_area=2000):
         self.husky = husky
         self.car_id
         self.target_tag_area = target_tag_area
@@ -30,8 +30,22 @@ class Robot:
     def set_car_id(self, id):
         self.car_id = id
         
-    def handle_command(self, topic, msg):
+    def handle_command(self, msg):
         cmd = msg.decode
+        print(cmd)
+        if cmd.startswith("Assignment:"):
+            self.car_id = int(cmd.split(":")[1])
+        if cmd == "go":
+            self.state = "RACE"        
+        elif cmd == self.car_id:
+            self.state = "GET_READY"
+        
+        
+    def tell_next(self, cmd):
+        if cmd == "Rounding corner":
+            self.mqtt.publish(self.car_id + 1)
+        elif cmd == "Pass Baton":
+            self.mqtt.publish("go")
 
     def check_state(self):
         if self.state == 'IDLE':
@@ -90,6 +104,12 @@ class Robot:
             else:
                 area_list.append(area)
             print(f'Tag {id} has an area of {area}')
+            
+        #if track apriltag found
+        #tell_next("Rounding corner")
+        
+        #if next car found
+        #tell_next("Pass Baton")
 
         area_list.sort()
         # Return largest area read (-1 if no data)
