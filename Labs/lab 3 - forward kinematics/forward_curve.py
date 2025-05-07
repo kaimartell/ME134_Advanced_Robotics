@@ -21,7 +21,7 @@ def save_csv():
 def run():
     speed = 15  # cm/s
 
-    # 2a) Straight 5 s
+    #straight
     t0 = time.ticks_ms()
     drivetrain.set_speed(speed, speed)
     while time.ticks_ms() - t0 < 5_000:
@@ -32,7 +32,7 @@ def run():
     drivetrain.right_motor.speedController.clear_history()
     time.sleep(10)
 
-    # 2b) Curve 5 s (half speed left, full right)
+    #curve
     left_v = speed / 2
     right_v = speed
     t1 = time.ticks_ms()

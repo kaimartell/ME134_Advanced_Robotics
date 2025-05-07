@@ -57,11 +57,9 @@ def theoretical_path(exp, tau, track):
         # Compute R from the half-speed ratio used in circle.py
         LR_RATIO = 0.5
         R = (track/2) * (1 + LR_RATIO) / (1 - LR_RATIO)
-        # Parametric angle for full lap over LAP_TIME seconds
         theta = 2 * np.pi * tau / LAP_TIME
         x0 = R * (1 - np.cos(theta))
         y0 = R * np.sin(theta)
-        # Rotate entire circle left (CCW) by 90°: (x,y) -> (-y, x)
         x_th = -y0
         y_th = x0
         return x_th, y_th
