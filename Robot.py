@@ -4,6 +4,7 @@ from MQTT.mqtt import MQTTClient
 from XRPLib.differential_drive import DifferentialDrive
 from XRPLib.defaults import *
 import time
+from PID_controller import PIDController
 
 drivetrain  = DifferentialDrive.get_default_differential_drive()
 reflectance = reflectance.get_default_reflectance()
@@ -111,7 +112,12 @@ class Robot:
         right = reflectance.get_left()
         left  = reflectance.get_right()
         error = left - right
-        # drivetrain.set_effort(base_effort - error, base_effort + error)
+
+        controller = PIDController(1,0,0.75)
+
+        effort = controller.update(error)
+
+        drivetrain.set_effort(base_effort - effort, base_effort + effort)
     
     def turn_90_degrees(self,imu, clockwise=True):
         target_angle = 85 #supoposed to be 90 but it was overturning

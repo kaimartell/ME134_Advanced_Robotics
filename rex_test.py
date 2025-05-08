@@ -75,7 +75,7 @@ class Robot:
         return data
 
     
-    def start_turn(clockwise=True):
+    def start_turn(self,clockwise=True):
         if clockwise:
             print("Turning clockwise...")
             drivetrain.set_effort(0.4,-0.4)
@@ -84,20 +84,20 @@ class Robot:
             drivetrain.set_effort(-0.4,0.4)
 
     
-    def stop_motors():
+    def stop_motors(self):
         print("Motors stopped.")
         drivetrain.set_effort(0,0)
 
     
     
-    def turn_90_degrees(imu, clockwise=True):
+    def turn_90_degrees(self,imu, clockwise=True):
         target_angle = 85 #supoposed to be 90 but it was overturning
         direction = -1 if clockwise else 1 
 
         angle = 0.0
         last_time = time.ticks_ms()
 
-        start_turn(clockwise)
+        self.start_turn(clockwise)
 
         while abs(angle) < target_angle:
             rate_mdps = imu.get_gyro_z_rate() 
@@ -111,15 +111,15 @@ class Robot:
 
             time.sleep_ms(5) 
 
-        stop_motors()
+        self.stop_motors()
         print(f"Done turning. Final angle turned: {angle:.2f} degrees")
 
     
-    def drive_straight_until_line(imu, target_heading, base_speed=0.4):
+    def drive_straight_until_line(self,imu, target_heading, base_speed=0.4):
         kp = 0.01 
 
-        right = sensor.get_left()
-        left = sensor.get_right()
+        right = reflectance.get_left()
+        left = reflectance.get_right()
 
         
 
@@ -140,12 +140,12 @@ class Robot:
 
                 drivetrain.set_effort(left_speed,right_speed)
 
-                right = sensor.get_left()
-                left = sensor.get_right()
+                right = reflectance.get_left()
+                left = reflectance.get_right()
 
                 time.sleep(0.1)
 
-        stop_motors()
+        self.stop_motors()
         print("Line detected, stopped.")
 
 
@@ -155,18 +155,18 @@ class Robot:
         imu = IMU.get_default_imu()
 
         #Turns right CW 90 degees
-        turn_90_degrees(imu, clockwise=True)
+        self.turn_90_degrees(imu, clockwise=True)
 
         #Goes straight until it finds the line
         target_heading = imu.get_yaw()
-        drive_straight_until_line(imu, target_heading)
+        self.drive_straight_until_line(imu, target_heading)
 
         #Moves foward just a bit
         drivetrain.set_effort(0.3,0.3)
         time.sleep(0.5)
 
         #Turns CCW to sit up line
-        turn_90_degrees(imu, clockwise=False)
+        self.turn_90_degrees(imu, clockwise=False)
 
 
 
