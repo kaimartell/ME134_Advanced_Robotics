@@ -1,135 +1,117 @@
-from Husky.huskylensPythonLibrary import HuskyLensLibrary
-import time
-from PID_controller import PIDController
+# robot.py
+from Husky.huskylensPythonLibrary import HuskyLensLibrary as HuskyLib
 from MQTT.mqtt import MQTTClient
 from XRPLib.differential_drive import DifferentialDrive
 from XRPLib.defaults import *
+import time
 
-
-drivetrain = DifferentialDrive.get_default_differential_drive()
+drivetrain  = DifferentialDrive.get_default_differential_drive()
 reflectance = reflectance.get_default_reflectance()
-imu = IMU.get_default_imu()
-
+imu         = IMU.get_default_imu()
 
 class Robot:
-    def __init__(self, husky, target_tag_area=2000):
-        self.husky = husky
-        self.car_id
+    def __init__(self, target_tag_area=2000):
+        self.car_id          = 0
         self.target_tag_area = target_tag_area
+        self.state           = "IDLE"
+        self.corner          = 0
+        self.color           = "Pink" #Pink, Green or Black
 
-        self.state = 'IDLE'
-        self.husky.tag_recognition_mode() # Switch to tag recon mode
-        self.line_PID = PIDController(0, 0, 0)
-        self.corner = 0
-        
-        self.mqtt = MQTTClient()
+        print("HuskyLens in tag recognition mode")
+        print("HuskyLens ready")
+        self.husky = HuskyLib
+
+
+        # init MQTT (no thread)
+        print("init mqtt")
+        self.mqtt = MQTTClient(
+            cmd_topic="topic/xrpinvitational"
+        )
         self.mqtt.set_command_callback(self.handle_command)
-        self.mqtt.subscribe_commands()
-        self.mqtt.start(on_thread=True)
-        
-    def set_car_id(self, id):
-        self.car_id = id
-        
-    def handle_command(self, msg):
-        cmd = msg.decode
-        print(cmd)
-        if cmd.startswith("Assignment:"):
-            self.car_id = int(cmd.split(":")[1])
-        if cmd == "go":
-            self.state = "RACE"        
-        elif cmd == self.car_id:
+
+    def handle_command(self, topic, msg):
+        payload = msg.decode("utf-8")
+        print(f"Got raw payload: {payload!r}")
+
+        #split if mqtt command is assignments
+        parts = payload.replace(":", "").split()
+        color_ids = {}
+        for i in range(0, len(parts) - 1, 2):
+            color = parts[i].lower()
+            num   = parts[i+1]
+            if num.isdigit():
+                color_ids[color] = int(num) - 1
+
+        #set car_id
+        my_color = self.color.lower()
+        if my_color in color_ids:
+            self.car_id = color_ids[my_color] + 1
+            print(f"→ Assigned car_id = {self.car_id} for color {self.color!r}")
+
+        #race
+        if "go" in parts:
+            if self.state == "GET_READY":
+                self.state = "RACE"
+                print("State set to RACE")
+
+        elif payload.strip() == str(self.car_id):
             self.state = "GET_READY"
-        
-        
-    def tell_next(self, cmd):
-        if cmd == "Rounding corner":
-            self.mqtt.publish(self.car_id + 1)
-        elif cmd == "Pass Baton":
-            self.mqtt.publish("go")
+            print("State set to GET_READY")
+
 
     def check_state(self):
-        if self.state == 'IDLE':
-            # Wait for commands from MQTT
+        if self.state == "IDLE":
             pass
-        elif self.state == 'GET_READY':
-            # Drive up to the line and wait to start
+        elif self.state == "GET_READY":
+            self.get_ready()
             pass
-        elif self.state == 'RACE':
-            # Drive around the track using line following
+        elif self.state == "RACE":
             self.line_follow()
-
-            # Search for april tags
-            #       if corner found (id=1), do something
-            #       if close to next tag, stop, drop, and roll
-            area = self.check_april_tag()
+            self.check_april_tag()
             if self.corner:
-                # SEND MQTT 
+                self.mqtt.publish(
+                    topic=self.mqtt.cmd_topic,
+                    msg=str(self.car_id + 1)
+                )
                 pass
-            if area > self.target_tag_area:
-                self.state == 'END'
-            
-        elif self.state == 'END':
-            # Drive back to start area
+        elif self.state == "END":
             pass
-
-    def line_follow(self, base_effort = 0.45):
- 
-        right = reflectance.get_left()
-        left = reflectance.get_right()
-        
-        error = left-right
-
-        controller = PIDController(1,0,0.75)
-
-        effort = controller.update(error)
-
-        drivetrain.set_effort(base_effort - effort, base_effort + effort)
 
     def check_april_tag(self):
-        corner = 0
-        area_list = []
+
+        self.corner = False
+        max_dist_area = -1
+
         data = self.husky.command_request_blocks_learned()
-        # Parse through available tags
-        for i in data:
+        for block in data:
+            x, y, w, h, tag_id = block
+            area = w * h
+            print(f"Tag {tag_id} has area {area}")
 
-            # data
-            tag_x = i[0]
-            tag_y = i[1]
-            area = i[2]*i[3]
-            id = i[4]
+            if tag_id == self.corner_tag_id:
+                self.corner = True
+                print("Corner tag detected")
+                
+            elif tag_id == self.distance_tag_id:
+                # track the largest area for your distance tag
+                if area > max_dist_area:
+                    max_dist_area = area
 
-            # if the 0th tag is found, corner flag goes high
-            if id == 0:
-                self.corner = 1
-            else:
-                area_list.append(area)
-            print(f'Tag {id} has an area of {area}')
-            
-        #if track apriltag found
-        #tell_next("Rounding corner")
-        
-        #if next car found
-        #tell_next("Pass Baton")
+        # once the distance tag is “close enough,” fire your go command
+        if max_dist_area >= self.target_tag_area:
+            print("→ Distance threshold reached (area="
+                f"{max_dist_area}), publishing 'go'")
+            # publish on your command topic so everyone hears the start
+            self.mqtt.publish(self.mqtt.cmd_topic, "go")
 
-        area_list.sort()
-        # Return largest area read (-1 if no data)
-        return area_list[len(area_list - 1)] if len(area_list) != 0 else -1
-    
+        return max_dist_area
 
-    def start_turn(self,clockwise=True):
-        if clockwise:
-            print("Turning clockwise...")
-            drivetrain.set_effort(0.4,-0.4)
-        else:
-            print("Turning counter-clockwise...")
-            drivetrain.set_effort(-0.4,0.4)
 
-    
-    def stop_motors(self):
-        print("Motors stopped.")
-        drivetrain.set_effort(0,0)
-
-    
+    def line_follow(self, base_effort=0.45):
+        right = reflectance.get_left()
+        left  = reflectance.get_right()
+        error = left - right
+        # drivetrain.set_effort(base_effort - error, base_effort + error)
     
     def turn_90_degrees(self,imu, clockwise=True):
         target_angle = 85 #supoposed to be 90 but it was overturning
@@ -154,7 +136,24 @@ class Robot:
 
         self.stop_motors()
         print(f"Done turning. Final angle turned: {angle:.2f} degrees")
+    
+    
+    
+    def get_ready(self):
 
+        imu = IMU.get_default_imu()
+
+        self.turn_90_degrees(imu, clockwise=True)
+
+        target_heading = imu.get_yaw()
+        self.drive_straight_until_line(imu, target_heading)
+
+        drivetrain.set_effort(0.3,0.3)
+        time.sleep(0.5)
+
+        self.turn_90_degrees(imu, clockwise=False)
+    
+    
     
     def drive_straight_until_line(self,imu, target_heading, base_speed=0.4):
         kp = 0.01 
@@ -168,11 +167,6 @@ class Robot:
                 
                 current_heading = imu.get_yaw() 
                 error = current_heading - target_heading
-
-
-                #print(f"Right sensor: {right}, Left sensor: {left}")
-                #print(f"Current heading: {current_heading} Target heading {target_heading}")
-                #print(error)
 
                 correction = kp * error
 
@@ -188,23 +182,17 @@ class Robot:
 
         self.stop_motors()
         print("Line detected, stopped.")
+        
+        
 
+    def run(self, loop_delay=0.01):
+        try:
+            while True:
+                self.mqtt.check_msg()
+                self.check_state()
 
-    
-    def get_ready(self):
+                time.sleep(loop_delay)
+                
+        except KeyboardInterrupt:
+            print("shutting down")
 
-        imu = IMU.get_default_imu()
-
-        #Turns right CW 90 degees
-        self.turn_90_degrees(imu, clockwise=True)
-
-        #Goes straight until it finds the line
-        target_heading = imu.get_yaw()
-        self.drive_straight_until_line(imu, target_heading)
-
-        #Moves foward just a bit
-        drivetrain.set_effort(0.3,0.3)
-        time.sleep(0.5)
-
-        #Turns CCW to sit up line
-        self.turn_90_degrees(imu, clockwise=False)
