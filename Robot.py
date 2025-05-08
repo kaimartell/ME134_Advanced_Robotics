@@ -4,11 +4,10 @@ from MQTT.mqtt import MQTTClient
 from XRPLib.differential_drive import DifferentialDrive
 from XRPLib.defaults import *
 import time
-from PID_controller import PIDController
+from PID.PID_controller import PIDController
 
 drivetrain  = DifferentialDrive.get_default_differential_drive()
 reflectance = reflectance.get_default_reflectance()
-imu         = IMU.get_default_imu()
 
 class Robot:
     def __init__(self, target_tag_area=2000):
@@ -17,10 +16,16 @@ class Robot:
         self.state           = "IDLE"
         self.corner          = 0
         self.color           = "Pink" #Pink, Green or Black
+        self.controller   = PIDController(1, 0, 0.75)
+        self.imu          = IMU.get_default_imu()
 
         print("HuskyLens in tag recognition mode")
         print("HuskyLens ready")
-        self.husky = HuskyLib
+        self.husky = HuskyLib(proto="I2C")
+        self.husky.tag_recognition_mode()
+        time.sleep_ms(100)
+        self.corner_tag_id = 1
+        self.distance_tag_id = 2
 
 
         # init MQTT (no thread)
@@ -51,7 +56,7 @@ class Robot:
 
         #race
         if "go" in parts:
-            if self.state == "GET_READY":
+            if self.state == "AT_START":
                 self.state = "RACE"
                 print("State set to RACE")
 
@@ -67,6 +72,7 @@ class Robot:
             self.get_ready()
             pass
         elif self.state == "RACE":
+            print("racing")
             self.line_follow()
             self.check_april_tag()
             if self.corner:
@@ -109,6 +115,9 @@ class Robot:
 
 
     def line_follow(self, base_effort=0.45):
+        
+        print("line following")
+        
         right = reflectance.get_left()
         left  = reflectance.get_right()
         error = left - right
@@ -118,6 +127,7 @@ class Robot:
         effort = controller.update(error)
 
         drivetrain.set_effort(base_effort - effort, base_effort + effort)
+        
     
     def turn_90_degrees(self,imu, clockwise=True):
         target_angle = 85 #supoposed to be 90 but it was overturning
@@ -126,7 +136,7 @@ class Robot:
         angle = 0.0
         last_time = time.ticks_ms()
 
-        self.start_turn(clockwise)
+        self.controller.start_turn(clockwise)
 
         while abs(angle) < target_angle:
             rate_mdps = imu.get_gyro_z_rate() 
@@ -140,16 +150,16 @@ class Robot:
 
             time.sleep_ms(5) 
 
-        self.stop_motors()
+        self.controller.stop_motors()
         print(f"Done turning. Final angle turned: {angle:.2f} degrees")
     
     
     
     def get_ready(self):
 
-        imu = IMU.get_default_imu()
+        #imu = IMU.get_default_imu()
 
-        self.turn_90_degrees(imu, clockwise=True)
+        self.turn_90_degrees(self.imu, clockwise=True)
 
         target_heading = imu.get_yaw()
         self.drive_straight_until_line(imu, target_heading)
@@ -158,6 +168,10 @@ class Robot:
         time.sleep(0.5)
 
         self.turn_90_degrees(imu, clockwise=False)
+        print("done")
+        
+        self.state = "AT_START"
+        print("State set to AT_START")
     
     
     
@@ -186,12 +200,13 @@ class Robot:
 
                 time.sleep(0.1)
 
-        self.stop_motors()
+        self.controller.stop_motors()
         print("Line detected, stopped.")
         
         
 
     def run(self, loop_delay=0.01):
+        print("run")
         try:
             while True:
                 self.mqtt.check_msg()
