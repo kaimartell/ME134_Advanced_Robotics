@@ -19,6 +19,7 @@ class Robot:
         self.controller   = PIDController(1, 0, 0.75)
         self.imu          = IMU.get_default_imu()
         self.done         = False
+        self.ready        = False
 
         print("HuskyLens in tag recognition mode")
         print("HuskyLens ready")
@@ -55,14 +56,15 @@ class Robot:
             print(f"→ Assigned car_id = {self.car_id} for color {self.color!r}")
 
         #race
-        if ("go" in parts) or self.car_id == 1:
+        if "go" in parts:
             if self.state == "AT_START":
                 self.state = "RACE"
                 print("State set to RACE")
 
         elif payload.strip() == str(self.car_id):
-            self.state = "GET_READY"
-            print("State set to GET_READY")
+            if not self.ready:
+                self.state = "GET_READY"
+                print("State set to GET_READY")
 
     def check_state(self):
         self.mqtt.check_msg()
@@ -221,6 +223,7 @@ class Robot:
         
         self.state = "AT_START"
         print("State set to AT_START")
+        self.ready = True
     
     def go_home(self):
 
@@ -249,7 +252,11 @@ class Robot:
 
 robot = Robot('Black')
 
+prev_state = ''
+
 while not robot.done:
     robot.check_state()
-    # print(robot.state)
+    if prev_state != robot.state:
+        print(robot.state)
     time.sleep_ms(5)
+    prev_state = robot.state
