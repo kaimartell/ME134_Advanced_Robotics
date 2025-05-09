@@ -248,7 +248,7 @@ class Robot:
             print("shutting down")
 
 
-robot = Robot('Pink')
+robot = Robot('Black')
 
 while not robot.done:
     robot.check_state()
