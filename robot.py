@@ -66,6 +66,7 @@ class Robot:
             print("State set to GET_READY")
 
     def check_state(self):
+        self.mqtt.check_msg()
         if self.state == "IDLE":
             pass
         elif self.state == "GET_READY":
@@ -247,8 +248,9 @@ class Robot:
             print("shutting down")
 
 
-robot = Robot('Green')
+robot = Robot('Pink')
 
 while not robot.done:
     robot.check_state()
+    # print(robot.state)
     time.sleep_ms(5)
