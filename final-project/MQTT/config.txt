@@ -1,3 +1,0 @@
-ssid = "Tufts_eecs"
-password = "foundedin1883"
-mqtt_broker = "10.247.137.92"
