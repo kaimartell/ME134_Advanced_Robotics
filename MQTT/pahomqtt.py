@@ -15,6 +15,7 @@ class MQTTClient:
         password=None,
         keepalive=0,
         ssl=None,
+        #ssl_params=None,
     ):
         if port == 0:
             port = 8883 if ssl else 1883
@@ -23,6 +24,7 @@ class MQTTClient:
         self.server = server
         self.port = port
         self.ssl = ssl
+        #self.ssl_params = ssl_params or {}
         self.pid = 0
         self.cb = None
         self.user = user
@@ -63,8 +65,15 @@ class MQTTClient:
         self.sock.settimeout(timeout)
         addr = socket.getaddrinfo(self.server, self.port)[0][-1]
         self.sock.connect(addr)
-        if self.ssl:
-            self.sock = self.ssl.wrap_socket(self.sock, server_hostname=self.server)
+        if self.ssl:     
+            try:
+                import ussl as sslmod
+                #self.sock = sslmod.wrap_socket(self.sock)
+            except ImportError:
+                import ssl as sslmod
+                #self.sock = sslmod.wrap_socket(self.sock)
+            self.sock = sslmod.wrap_socket(self.sock, **getattr(self, "ssl_params", {}))
+            #self.sock = self.ssl.wrap_socket(self.sock, server_hostname=self.server)
         premsg = bytearray(b"\x10\0\0\0\0\0")
         msg = bytearray(b"\x04MQTT\x04\x02\0\0")
 
@@ -99,10 +108,13 @@ class MQTTClient:
         if self.user:
             self._send_str(self.user)
             self._send_str(self.pswd)
+         # make sure we get exactly 4 bytes for CONNACK
         resp = self.sock.read(4)
+        if not resp or len(resp) < 4:
+            raise MQTTException("Failed to receive CONNACK (got %r)" % resp)
         
         #print("resp" + str(resp))
-        assert resp[0] == 0x20 and resp[1] == 0x02
+        assert resp[0] == 0x20 and resp[1] == 0x02, "Bad CONNACK header %r" % resp[0:2]
         if resp[3] != 0:
             raise MQTTException(resp[3])
         return resp[2] & 1
