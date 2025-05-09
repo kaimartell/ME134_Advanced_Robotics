@@ -26,7 +26,6 @@ class Robot:
         self.husky.tag_recognition_mode()
         time.sleep_ms(100)
         self.corner_tag_id = 1
-        self.distance_tag_id = 2
 
 
         # init MQTT (no thread)
@@ -56,7 +55,7 @@ class Robot:
             print(f"→ Assigned car_id = {self.car_id} for color {self.color!r}")
 
         #race
-        if "go" in parts:
+        if ("go" in parts) or self.car_id == 1:
             if self.state == "AT_START":
                 self.state = "RACE"
                 print("State set to RACE")
@@ -98,7 +97,7 @@ class Robot:
                 self.corner = True
                 print("Corner tag detected")
                 
-            elif tag_id == self.distance_tag_id:
+            else:
                 # track the largest area for your distance tag
                 if area > max_dist_area:
                     max_dist_area = area
