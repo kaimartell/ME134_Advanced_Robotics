@@ -109,6 +109,7 @@ class Robot:
         if max_dist_area >= self.target_tag_area:
             print("→ Distance threshold reached (area="
                 f"{max_dist_area}), publishing 'go'")
+            self.state = "END"
             # publish on your command topic so everyone hears the start
             self.mqtt.publish(self.mqtt.cmd_topic, "go")
 
