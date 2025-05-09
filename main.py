@@ -36,6 +36,7 @@ class Robot:
         )
         self.mqtt.set_command_callback(self.handle_command)
 
+    #MQTT command callback functionality
     def handle_command(self, topic, msg):
         payload = msg.decode("utf-8")
         print(f"Got raw payload: {payload!r}")
@@ -69,7 +70,8 @@ class Robot:
             if not self.ready:
                 self.state = "GET_READY"
                 print("State set to GET_READY")
-
+                
+    #state machine here
     def check_state(self):
         self.mqtt.check_msg()
         if self.state == "IDLE":
@@ -108,7 +110,7 @@ class Robot:
                 if area > max_dist_area:
                     max_dist_area = area
 
-        # once the distance tag is “close enough,” fire your go command
+        # once the distance tag is “close enough,” fire go command
         if max_dist_area >= self.target_tag_area:
             print("→ Distance threshold reached (area="
                 f"{max_dist_area}), publishing 'go'")
@@ -118,6 +120,7 @@ class Robot:
 
         return max_dist_area
 
+    #line following
     def line_follow(self, base_effort=0.45):
         
         print("line following")
@@ -131,7 +134,8 @@ class Robot:
         effort = controller.update(error)
 
         drivetrain.set_effort(base_effort - effort, base_effort + effort)
-         
+        
+    #turn 90 degrees
     def turn_90_degrees(self,imu, clockwise=True):
         target_angle = 85 #supoposed to be 90 but it was overturning
         direction = -1 if clockwise else 1 
@@ -156,6 +160,7 @@ class Robot:
         self.controller.stop_motors()
         print(f"Done turning. Final angle turned: {angle:.2f} degrees")
     
+    #drive straight until line is detected
     def drive_straight_until_line(self,imu, target_heading, base_speed=0.4):
         kp = 0.01 
 
@@ -192,12 +197,7 @@ class Robot:
 
             current_heading = imu.get_yaw() 
             error = current_heading - target_heading
-
-
-            #print(f"Right sensor: {right}, Left sensor: {left}")
-            #print(f"Current heading: {current_heading} Target heading {target_heading}")
-            #print(error)
-
+            
             correction = kp * error
 
             left_speed = base_speed + correction
@@ -210,9 +210,8 @@ class Robot:
         print("moved back.")
         self.controller.stop_motors()
 
+    #move to the start line
     def get_ready(self):
-
-        #imu = IMU.get_default_imu()
 
         self.turn_90_degrees(self.imu, clockwise=True)
 
@@ -229,6 +228,7 @@ class Robot:
         print("State set to AT_START")
         self.ready = True
     
+    #move off of track
     def go_home(self):
 
         self.turn_90_degrees(imu, clockwise=False)
@@ -248,7 +248,7 @@ class Robot:
             try:
                 self.check_state()
             except OSError as e:
-                # handle MQTT socket timeouts, Wi‑Fi drops, etc.
+                # handle MQTT socket timeouts, Wi‑Fi drops
                 print("Network error:", e)
                 print("Reconnecting Wi‑Fi & MQTT…")
                 self.mqtt.reconnect()

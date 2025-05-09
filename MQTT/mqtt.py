@@ -55,6 +55,7 @@ class MQTTClient:
         # placeholder for user callback
         self._cmd_handler = None
 
+    #change paramters here for wifi and mqtt broker
     def _load_config(self, filename):
         # defaults
         self.ssid          = "Tufts_Robot"
@@ -77,10 +78,9 @@ class MQTTClient:
         except OSError:
             print(f"Config file '{filename}' not found; using defaults.")
 
+    #connect wifi
     def _init_wifi(self, ssid, password, timeout=10):
-        """Blink LED while connecting; LED steady on if connected; off if fail."""
         print(f"Connecting to Wi‑Fi SSID='{ssid}'…", end="")
-
         wlan = network.WLAN(network.STA_IF)
         wlan.active(True)
         wlan.connect(ssid, password)
@@ -101,7 +101,6 @@ class MQTTClient:
         return False
 
     def set_command_callback(self, handler):
-        """Register your Robot.handle_command(topic, msg)."""
         self._cmd_handler = handler
 
     def _dispatch(self, topic, msg):
@@ -116,8 +115,8 @@ class MQTTClient:
     def publish(self, topic, msg):
         self.client.publish(topic, msg)
         
+    #reconnect on OS -1 error wifi drop
     def reconnect(self):
-        """Re‑init Wi‑Fi (blink), then reconnect MQTT, re‑subscribe."""
         print("Reconnecting Wi‑Fi…")
         if not self._init_wifi(self.ssid, self.wifi_pass, timeout=5):
             print("Failed to reconnect Wi‑Fi.")
@@ -134,7 +133,6 @@ class MQTTClient:
             LED.off()
             return False
 
+    #check for incoming messages
     def check_msg(self):
-        #print("here")
-        """Call this in your main loop to process incoming packets."""
         self.client.check_msg()
