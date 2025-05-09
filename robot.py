@@ -82,6 +82,7 @@ class Robot:
                 )
                 pass
         elif self.state == "END":
+            self.go_home()
             pass
 
     def check_april_tag(self):
@@ -155,26 +156,6 @@ class Robot:
     
     
     
-    def get_ready(self):
-
-        #imu = IMU.get_default_imu()
-
-        self.turn_90_degrees(self.imu, clockwise=True)
-
-        target_heading = imu.get_yaw()
-        self.drive_straight_until_line(imu, target_heading)
-
-        drivetrain.set_effort(0.3,0.3)
-        time.sleep(0.5)
-
-        self.turn_90_degrees(imu, clockwise=False)
-        print("done")
-        
-        self.state = "AT_START"
-        print("State set to AT_START")
-    
-    
-    
     def drive_straight_until_line(self,imu, target_heading, base_speed=0.4):
         kp = 0.01 
 
@@ -202,6 +183,64 @@ class Robot:
 
         self.controller.stop_motors()
         print("Line detected, stopped.")
+
+    
+    def drive_straight(self,imu, target_heading, start_time, base_speed=0.4):
+
+        kp = 0.01 
+
+        while time.time() - start_time < 4:
+
+            current_heading = imu.get_yaw() 
+            error = current_heading - target_heading
+
+
+            #print(f"Right sensor: {right}, Left sensor: {left}")
+            #print(f"Current heading: {current_heading} Target heading {target_heading}")
+            #print(error)
+
+            correction = kp * error
+
+            left_speed = base_speed + correction
+            right_speed = base_speed - correction
+
+            drivetrain.set_effort(left_speed,right_speed)
+
+            time.sleep(0.1)
+
+        print("moved back.")
+        self.controller.stop_motors()
+
+
+    
+    def get_ready(self):
+
+        #imu = IMU.get_default_imu()
+
+        self.turn_90_degrees(self.imu, clockwise=True)
+
+        target_heading = imu.get_yaw()
+        self.drive_straight_until_line(imu, target_heading)
+
+        drivetrain.set_effort(0.3,0.3)
+        time.sleep(0.5)
+
+        self.turn_90_degrees(imu, clockwise=False)
+        print("done")
+        
+        self.state = "AT_START"
+        print("State set to AT_START")
+
+    
+    def go_home(self):
+
+        self.turn_90_degrees(imu, clockwise=False)
+
+        target_heading = imu.get_yaw()
+        start_time = time.time()
+        self.drive_straight(imu, target_heading, start_time)
+
+        self.turn_90_degrees(imu, clockwise=True)
         
         
 
