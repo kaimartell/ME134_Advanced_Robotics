@@ -262,5 +262,5 @@ class Robot:
             time.sleep(loop_delay)
 
 if __name__ == "__main__":
-    robot = Robot('Green')
+    robot = Robot('Pink')
     robot.run()

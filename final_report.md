@@ -41,6 +41,11 @@ track, meaning the entire relay takes around ___ min.
 - **Vision robustness**: AprilTag detection worked under variable lighting and 
     speeds up to 0.5 m/s.  
 - **Compact code**: Excluding libraries, python scripts total ~600 lines 
+- **Hardware Issues**: It was evident that our code worked well, however we had
+    numerous issues with underpowering of the XRP's motors, which would lead to
+    poor turning accuracy and occasional stray from line following. It was 
+    difficult to find a balance between too much weight on the XRP and too 
+    little where the wheels would not gain traction.
 
 ## Impact
 - **Scalability**: Adding more robots or segments only requires 
