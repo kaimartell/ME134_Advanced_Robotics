@@ -60,6 +60,10 @@ class Robot:
             if self.state == "AT_START":
                 self.state = "RACE"
                 print("State set to RACE")
+                
+        if "stop" in parts: 
+            if self.car_id == 3: 
+                self.state = "END"
 
         elif payload.strip() == str(self.car_id):
             if not self.ready:
@@ -258,5 +262,5 @@ class Robot:
             time.sleep(loop_delay)
 
 if __name__ == "__main__":
-    robot = Robot('Black')
+    robot = Robot('Green')
     robot.run()
