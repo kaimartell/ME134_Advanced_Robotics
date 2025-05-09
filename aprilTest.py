@@ -13,8 +13,6 @@ from Husky.huskylensPythonLibrary import HuskyLensLibrary
 
 
 def read_tags(husky):
-    husky.tag_recognition_mode() # Switch to tag recon mode
-    time.sleep_ms(100) # Wait for camera data to become available
     data = husky.command_request_blocks_learned()
     
     # Parse through available tags
@@ -26,5 +24,7 @@ def read_tags(husky):
         print(f'Tag {id} has an area of {area}')
 
 husky = HuskyLensLibrary(proto="I2C")
+husky.tag_recognition_mode() # Switch to tag recon mode
 while True:
     read_tags(husky)
+    time.sleep_ms(100) # Wait for camera data to become available
