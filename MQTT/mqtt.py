@@ -78,20 +78,25 @@ class MQTTClient:
             print(f"Config file '{filename}' not found; using defaults.")
 
     def _init_wifi(self, ssid, password, timeout=10):
+        """Blink LED while connecting; LED steady on if connected; off if fail."""
         print(f"Connecting to Wi‑Fi SSID='{ssid}'…", end="")
+
         wlan = network.WLAN(network.STA_IF)
         wlan.active(True)
         wlan.connect(ssid, password)
-        
-        LED.on()  # Turn on the LED to indicate Wi-Fi connection attempt
 
-        for _ in range(timeout):
+        # Blink LED at 0.5 s intervals while trying
+        for _ in range(timeout * 2):
+            LED.value(not LED.value())  # toggle
             if wlan.status() >= 3:
                 ip = wlan.ifconfig()[0]
                 print(f" ok, IP={ip}")
+                LED.on()  # steady on
                 return True
-            time.sleep(1)
-            print(".", end="")
+            time.sleep_ms(500)
+
+        # timeout
+        LED.off()
         print("\nWi‑Fi connection timeout.")
         return False
 
@@ -112,6 +117,7 @@ class MQTTClient:
         self.client.publish(topic, msg)
         
     def reconnect(self):
+        """Re‑init Wi‑Fi (blink), then reconnect MQTT, re‑subscribe."""
         print("Reconnecting Wi‑Fi…")
         if not self._init_wifi(self.ssid, self.wifi_pass, timeout=5):
             print("Failed to reconnect Wi‑Fi.")
@@ -121,10 +127,11 @@ class MQTTClient:
         try:
             self.client.connect()
             self.client.subscribe(self.cmd_topic)
-            print("MQTT reconnected and re‑subscribed.")
+            print("MQTT reconnected.")
             return True
         except Exception as e:
-            print("Failed to reconnect MQTT:", e)
+            print("MQTT reconnect failed:", e)
+            LED.off()
             return False
 
     def check_msg(self):

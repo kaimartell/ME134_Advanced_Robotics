@@ -238,32 +238,25 @@ class Robot:
         self.done = True
         
     def run(self, loop_delay=0.01):
-        print("run")
-        try:
-            while True:
-                self.mqtt.check_msg()
+        prev = None
+        print("Starting main loop")
+        while not self.done:
+            try:
                 self.check_state()
+            except OSError as e:
+                # handle MQTT socket timeouts, Wi‑Fi drops, etc.
+                print("Network error:", e)
+                print("Reconnecting Wi‑Fi & MQTT…")
+                self.mqtt.reconnect()
+            except Exception as e:
+                print("Unexpected error:", e)
 
-                time.sleep(loop_delay)
-                
-        except KeyboardInterrupt:
-            print("shutting down")
+            if prev != self.state:
+                print("State:", self.state)
+                prev = self.state
 
+            time.sleep(loop_delay)
 
-robot = Robot('Black')
-
-prev_state = ''
-
-while not robot.done:
-    
-    try: 
-        robot.check_state()
-    except Exception as e:
-        robot.mqtt.reconnect()
-        print(f"Error: {e}")
-    
-    
-    if prev_state != robot.state:
-        print(robot.state)
-    time.sleep_ms(5)
-    prev_state = robot.state
+if __name__ == "__main__":
+    robot = Robot('Black')
+    robot.run()
