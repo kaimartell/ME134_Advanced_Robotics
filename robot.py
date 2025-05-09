@@ -10,14 +10,15 @@ drivetrain  = DifferentialDrive.get_default_differential_drive()
 reflectance = reflectance.get_default_reflectance()
 
 class Robot:
-    def __init__(self, target_tag_area=2000):
+    def __init__(self, color, target_tag_area=2000):
         self.car_id          = 0
         self.target_tag_area = target_tag_area
         self.state           = "IDLE"
         self.corner          = 0
-        self.color           = "Pink" #Pink, Green or Black
+        self.color           = color #Pink, Green or Black
         self.controller   = PIDController(1, 0, 0.75)
         self.imu          = IMU.get_default_imu()
+        self.done         = False
 
         print("HuskyLens in tag recognition mode")
         print("HuskyLens ready")
@@ -64,13 +65,11 @@ class Robot:
             self.state = "GET_READY"
             print("State set to GET_READY")
 
-
     def check_state(self):
         if self.state == "IDLE":
             pass
         elif self.state == "GET_READY":
             self.get_ready()
-            pass
         elif self.state == "RACE":
             print("racing")
             self.line_follow()
@@ -80,10 +79,8 @@ class Robot:
                     topic=self.mqtt.cmd_topic,
                     msg=str(self.car_id + 1)
                 )
-                pass
         elif self.state == "END":
             self.go_home()
-            pass
 
     def check_april_tag(self):
 
@@ -115,7 +112,6 @@ class Robot:
 
         return max_dist_area
 
-
     def line_follow(self, base_effort=0.45):
         
         print("line following")
@@ -129,8 +125,7 @@ class Robot:
         effort = controller.update(error)
 
         drivetrain.set_effort(base_effort - effort, base_effort + effort)
-        
-    
+         
     def turn_90_degrees(self,imu, clockwise=True):
         target_angle = 85 #supoposed to be 90 but it was overturning
         direction = -1 if clockwise else 1 
@@ -154,8 +149,6 @@ class Robot:
 
         self.controller.stop_motors()
         print(f"Done turning. Final angle turned: {angle:.2f} degrees")
-    
-    
     
     def drive_straight_until_line(self,imu, target_heading, base_speed=0.4):
         kp = 0.01 
@@ -185,7 +178,6 @@ class Robot:
         self.controller.stop_motors()
         print("Line detected, stopped.")
 
-    
     def drive_straight(self,imu, target_heading, start_time, base_speed=0.4):
 
         kp = 0.01 
@@ -212,8 +204,6 @@ class Robot:
         print("moved back.")
         self.controller.stop_motors()
 
-
-    
     def get_ready(self):
 
         #imu = IMU.get_default_imu()
@@ -231,7 +221,6 @@ class Robot:
         
         self.state = "AT_START"
         print("State set to AT_START")
-
     
     def go_home(self):
 
@@ -242,9 +231,9 @@ class Robot:
         self.drive_straight(imu, target_heading, start_time)
 
         self.turn_90_degrees(imu, clockwise=True)
-        
-        
 
+        self.done = True
+        
     def run(self, loop_delay=0.01):
         print("run")
         try:
@@ -257,3 +246,9 @@ class Robot:
         except KeyboardInterrupt:
             print("shutting down")
 
+
+robot = Robot('Green')
+
+while not robot.done:
+    robot.check_state()
+    time.sleep_ms(5)
