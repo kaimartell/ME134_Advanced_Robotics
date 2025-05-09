@@ -110,6 +110,22 @@ class MQTTClient:
 
     def publish(self, topic, msg):
         self.client.publish(topic, msg)
+        
+    def reconnect(self):
+        print("Reconnecting Wi‑Fi…")
+        if not self._init_wifi(self.ssid, self.wifi_pass, timeout=5):
+            print("Failed to reconnect Wi‑Fi.")
+            return False
+
+        print("Reconnecting MQTT…")
+        try:
+            self.client.connect()
+            self.client.subscribe(self.cmd_topic)
+            print("MQTT reconnected and re‑subscribed.")
+            return True
+        except Exception as e:
+            print("Failed to reconnect MQTT:", e)
+            return False
 
     def check_msg(self):
         #print("here")

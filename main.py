@@ -250,12 +250,19 @@ class Robot:
             print("shutting down")
 
 
-robot = Robot('Pink')
+robot = Robot('Black')
 
 prev_state = ''
 
 while not robot.done:
-    robot.check_state()
+    
+    try: 
+        robot.check_state()
+    except Exception as e:
+        robot.mqtt.reconnect()
+        print(f"Error: {e}")
+    
+    
     if prev_state != robot.state:
         print(robot.state)
     time.sleep_ms(5)
