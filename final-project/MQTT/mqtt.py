@@ -1,10 +1,13 @@
 # mqtt.py
 import time
 import network
+import machine
 from machine import unique_id
 from MQTT.pahomqtt import MQTTClient as Paho
 
 CONFIG_FILE = "config.txt"
+
+LED = machine.Pin('LED', machine.Pin.OUT)
 
 class MQTTClient:
     def __init__(
@@ -52,6 +55,7 @@ class MQTTClient:
         # placeholder for user callback
         self._cmd_handler = None
 
+    #change paramters here for wifi and mqtt broker
     def _load_config(self, filename):
         # defaults
         self.ssid          = "Tufts_Robot"
@@ -74,24 +78,29 @@ class MQTTClient:
         except OSError:
             print(f"Config file '{filename}' not found; using defaults.")
 
+    #connect wifi
     def _init_wifi(self, ssid, password, timeout=10):
         print(f"Connecting to Wi‑Fi SSID='{ssid}'…", end="")
         wlan = network.WLAN(network.STA_IF)
         wlan.active(True)
         wlan.connect(ssid, password)
 
-        for _ in range(timeout):
+        # Blink LED at 0.5 s intervals while trying
+        for _ in range(timeout * 2):
+            LED.value(not LED.value())  # toggle
             if wlan.status() >= 3:
                 ip = wlan.ifconfig()[0]
                 print(f" ok, IP={ip}")
+                LED.on()  # steady on
                 return True
-            time.sleep(1)
-            print(".", end="")
+            time.sleep_ms(500)
+
+        # timeout
+        LED.off()
         print("\nWi‑Fi connection timeout.")
         return False
 
     def set_command_callback(self, handler):
-        """Register your Robot.handle_command(topic, msg)."""
         self._cmd_handler = handler
 
     def _dispatch(self, topic, msg):
@@ -105,8 +114,25 @@ class MQTTClient:
 
     def publish(self, topic, msg):
         self.client.publish(topic, msg)
+        
+    #reconnect on OS -1 error wifi drop
+    def reconnect(self):
+        print("Reconnecting Wi‑Fi…")
+        if not self._init_wifi(self.ssid, self.wifi_pass, timeout=5):
+            print("Failed to reconnect Wi‑Fi.")
+            return False
 
+        print("Reconnecting MQTT…")
+        try:
+            self.client.connect()
+            self.client.subscribe(self.cmd_topic)
+            print("MQTT reconnected.")
+            return True
+        except Exception as e:
+            print("MQTT reconnect failed:", e)
+            LED.off()
+            return False
+
+    #check for incoming messages
     def check_msg(self):
-        #print("here")
-        """Call this in your main loop to process incoming packets."""
         self.client.check_msg()

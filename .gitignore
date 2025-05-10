@@ -1,4 +1,4 @@
 .mov
 .pdf
 Labs/**/*.mov
-Labs/**/*.zip
+Labs/**/*.zip.DS_Store
